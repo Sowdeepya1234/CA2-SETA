@@ -1,20 +1,31 @@
 import { useMemo, useState } from "react";
 import { useOrder } from "../context/OrderContext";
 import OrderCard from "../components/OrderCard";
+import { isValidOrder } from "../utils/orderValidation";
 
 const FilterOrders = () => {
-  const { orders } = useOrder();
+  const { orders, loading } = useOrder();
   const [search, setSearch] = useState("");
 
-  const filteredOrders = useMemo(() => {
-    return orders.filter((order) => {
-      const customer = order.customerName?.toLowerCase() || "";
-      const restaurant = order.restaurant?.toLowerCase() || "";
-      const value = search.toLowerCase();
+  const searchValue = search.trim();
 
-      return customer.includes(value) || restaurant.includes(value);
-    });
-  }, [orders, search]);
+  const filteredOrders = useMemo(() => {
+    const validOrders = (Array.isArray(orders) ? orders : []).filter(isValidOrder);
+
+    if (!searchValue) {
+      return [];
+    }
+
+    return validOrders.filter((order) =>
+      (order?.restaurant || "")
+        .toLowerCase()
+        .includes(searchValue.toLowerCase())
+    );
+  }, [orders, searchValue]);
+
+  if (loading) {
+    return <p>Loading orders...</p>;
+  }
 
   return (
     <div className="app-container">
@@ -22,15 +33,17 @@ const FilterOrders = () => {
 
       <input
         type="text"
-        placeholder="Search by customer or restaurant"
+        placeholder="Search by restaurant name"
         value={search}
         onChange={(e) => setSearch(e.target.value)}
         data-testid="filter-input"
       />
 
       <div className="order-list">
-        {filteredOrders.length === 0 ? (
-          <p>No matching orders found</p>
+        {!searchValue ? (
+          <p>Please enter a restaurant name</p>
+        ) : filteredOrders.length === 0 ? (
+          <p>no results found</p>
         ) : (
           filteredOrders.map((order) => (
             <OrderCard key={order.orderId} order={order} />
